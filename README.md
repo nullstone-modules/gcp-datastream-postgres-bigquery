@@ -34,22 +34,55 @@ vars:
 
 ## Prerequisites on the source database
 
-Postgres logical replication must be configured on the source before the stream
-can start. Datastream expects:
+Postgres logical replication must be configured on the source **before** you launch
+this module — Datastream cannot create the stream otherwise. Complete the steps below
+in order.
 
-- **Logical decoding enabled** (`wal_level = logical`).
-- A **publication** listing the tables to replicate — its name is passed as
-  `var.replication_publication`. For example:
-  ```sql
-  CREATE PUBLICATION nullstone_pub FOR ALL TABLES;
-  ```
-- A **logical replication slot** using the `pgoutput` plugin — its name is passed
-  as `var.replication_slot`. For example:
-  ```sql
-  SELECT pg_create_logical_replication_slot('nullstone_slot', 'pgoutput');
-  ```
-- A **replication user** (`var.postgres_username` / `var.postgres_password`) with
-  `REPLICATION` privileges and read access to the replicated tables.
+### 1. Enable logical decoding
+
+Logical replication requires `wal_level >= logical`. On Cloud SQL for Postgres this is
+controlled by the `cloudsql.logical_decoding` database flag — set it to `on` (e.g. with
+the `gcp-cloudsql-postgres` module's flags input, or in the Cloud Console). Changing this
+flag **requires a database restart**, so apply it first and let the instance come back up.
+
+You can confirm it is active with:
+
+```sql
+SHOW wal_level;  -- should report: logical
+```
+
+### 2. Create the publication and replication slot
+
+Once `wal_level` is `logical`, create the publication and logical replication slot that
+Datastream reads from. Their names are passed to this module as
+`var.replication_publication` and `var.replication_slot`:
+
+```sql
+-- Publication listing the tables to replicate
+CREATE PUBLICATION nullstone_pub1 FOR ALL TABLES;
+
+-- Logical replication slot using the pgoutput plugin
+SELECT pg_create_logical_replication_slot('datastream_slot1', 'pgoutput');
+```
+
+### 3. Create the replication user
+
+Create the user Datastream authenticates as (`var.postgres_username` /
+`var.postgres_password`). It needs `REPLICATION` privileges and `SELECT` on the tables
+being replicated:
+
+```sql
+CREATE USER datastream WITH REPLICATION LOGIN PASSWORD '...';
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO datastream;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO datastream;
+```
+
+The `ALTER DEFAULT PRIVILEGES` statement ensures the user also gains `SELECT` on tables
+created in the future, not just those that exist today. Repeat the two `GRANT`/`ALTER`
+statements for any other schemas listed in `var.replication_objects`.
+
+Pass this password to the module using `{{ secret(...) }}` interpolation so it is never
+stored in plaintext config (see [How it connects](#how-it-connects) above).
 
 ## Selecting what to replicate
 
