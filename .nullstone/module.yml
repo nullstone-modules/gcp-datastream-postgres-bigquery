@@ -1,0 +1,16 @@
+org_name: nullstone
+name: gcp-datastream-postgres-bigquery
+friendly_name: Datastream (Postgres -> BigQuery)
+description: Creates a Datastream connection to replicate data from a postgres instance to a BigQuery dataset
+category: block
+subcategory: ""
+provider_types:
+    - gcp
+platform: datastream
+subplatform: postgres-bigquery
+type: ""
+appCategories: []
+is_public: true
+tool_name: opentofu
+include: []
+source_url: https://github.com/nullstone-modules/gcp-datastream-postgres-bigquery
