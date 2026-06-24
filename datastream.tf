@@ -28,6 +28,8 @@ resource "google_datastream_connection_profile" "source" {
   private_connectivity {
     private_connection = google_datastream_private_connection.this.id
   }
+
+  depends_on = [google_project_service.datastream]
 }
 
 resource "google_datastream_connection_profile" "destination" {
@@ -37,6 +39,8 @@ resource "google_datastream_connection_profile" "destination" {
   labels                = local.labels
 
   bigquery_profile {}
+
+  depends_on = [google_project_service.datastream]
 }
 
 resource "google_datastream_stream" "this" {
